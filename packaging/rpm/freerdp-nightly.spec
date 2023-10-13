@@ -1,10 +1,9 @@
 #
-# spec file for package freerdp-nightly
+# spec file for package freerdp
 #
 # Copyright (c) 2015 Bernhard Miklautz <bernhard.miklautz@shacknet.at>
 #
 # Bugs and comments https://github.com/FreeRDP/FreeRDP/issues
-
 
 %define   INSTALL_PREFIX /opt/freerdp-nightly/
 
@@ -16,15 +15,15 @@
 # do not require our own libs
 %global __requires_exclude ^(libfreerdp.*|libwinpr).*$
 
-Name:           freerdp-nightly
-Version:        3.0
-Release:        0
+Name:           freerdp
+Version:        3.0.0.beta4
+Release:        1%{?dist}
 License:        ASL 2.0
 Summary:        Free implementation of the Remote Desktop Protocol (RDP)
 Url:            http://www.freerdp.com
 Group:          Productivity/Networking/Other
-Source0:        %{name}-%{version}.tar.bz2
-Source1:        source_version
+Source0:        freerdp-%{version}.tar.bz2
+#Source1:        source_version
 BuildRequires:   gcc-c++
 BuildRequires:  cmake >= 2.8.12
 BuildRequires: libxkbfile-devel
@@ -47,6 +46,8 @@ BuildRequires: libxml2-devel
 BuildRequires: zlib-devel
 BuildRequires: krb5-devel
 BuildRequires: cjson-devel
+BuildRequires: fuse3-devel
+BuildRequires: SDL2_ttf-devel
 
 # (Open)Suse
 %if %{defined suse_version}
@@ -85,12 +86,9 @@ BuildRequires: libjpeg-turbo-devel
 BuildRequires: wayland-devel
 %endif
 
-%if 0%{?rhel} >= 8
-BuildRequires: libwayland-client-devel
-%endif
-
 %if 0%{?fedora} >= 36 || 0%{?rhel} >= 9
 BuildRequires: ffmpeg-free-devel
+BuildRequires: wayland-devel
 %endif
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
@@ -109,13 +107,19 @@ This package contains development files necessary for developing applications
 based on freerdp and winpr.
 
 %prep
-%setup -q
-cd %{_topdir}/BUILD
-cp %{_topdir}/SOURCES/source_version freerdp-nightly-%{version}/.source_version
+#%setup -q
+%autosetup -p1 -n freerdp-%{version}
+
+#cd %{_topdir}/BUILD
+#cp %{_topdir}/SOURCES/source_version freerdp-%{version}/.source_version
+
+# Rpmlint fixes
+find . -name "*.h" -exec chmod 664 {} \;
+find . -name "*.c" -exec chmod 664 {} \;
 
 %build
-
-%cmake  -DCMAKE_SKIP_RPATH=FALSE \
+%cmake %{?_cmake_skip_rpath} \
+        -DCMAKE_SKIP_RPATH=FALSE \
         -DCMAKE_SKIP_INSTALL_RPATH=FALSE \
         -DWITH_FREERDP_DEPRECATED_COMMANDLINE=ON \
         -DWITH_PULSE=ON \
@@ -123,6 +127,7 @@ cp %{_topdir}/SOURCES/source_version freerdp-nightly-%{version}/.source_version
         -DWITH_CUPS=ON \
         -DWITH_PCSC=ON \
         -DWITH_JPEG=ON \
+        -DWITH_PKCS11=OFF \
 %if 0%{?fedora} >= 36 || 0%{?rhel} >= 9 || 0%{?suse_version}
         -DWITH_FFMPEG=ON \
         -DWITH_DSP_FFMPEG=ON \
@@ -145,7 +150,7 @@ cp %{_topdir}/SOURCES/source_version freerdp-nightly-%{version}/.source_version
 %endif
         -DCMAKE_INSTALL_LIBDIR=%{_lib}
 
-%if 0%{?fedora} > 32
+%if 0%{?fedora} > 32 || 0%{?rhel} >= 9
 %cmake_build
 %else
 make %{?_smp_mflags}
@@ -157,7 +162,7 @@ make %{?_smp_mflags}
 %endif
 
 %if %{defined fedora} || %{defined rhel}
-%if 0%{?fedora} > 32
+%if 0%{?fedora} > 32 || 0%{?rhel} >= 9
 %cmake_install
 %else
 rm -rf $RPM_BUILD_ROOT
@@ -172,13 +177,16 @@ export NO_BRP_CHECK_RPATH true
 %defattr(-,root,root)
 %dir %{INSTALL_PREFIX}
 %dir %{INSTALL_PREFIX}/%{_lib}
+%dir %{INSTALL_PREFIX}/%{_lib}/freerdp3
+%dir %{INSTALL_PREFIX}/%{_lib}/freerdp3/proxy
 %dir %{INSTALL_PREFIX}/bin
 %dir %{INSTALL_PREFIX}/share/
 %dir %{INSTALL_PREFIX}/share/man/
 %dir %{INSTALL_PREFIX}/share/man/man1
 %dir %{INSTALL_PREFIX}/share/man/man7
 %{INSTALL_PREFIX}/%{_lib}/*.so.*
-%{INSTALL_PREFIX}/bin/
+%{INSTALL_PREFIX}/%{_lib}/freerdp3/proxy/*.so
+%{INSTALL_PREFIX}/bin/*
 %{INSTALL_PREFIX}/share/man/man1/xfreerdp.1*
 %{INSTALL_PREFIX}/share/man/man1/freerdp-shadow-cli.1*
 %{INSTALL_PREFIX}/share/man/man1/winpr-makecert.1*
